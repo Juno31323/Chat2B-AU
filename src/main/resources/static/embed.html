@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>안산대학교 입학 FAQ 챗봇 위젯</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="widget-body">
+  <main class="widget-shell">
+    <section class="chat-panel widget-chat-panel">
+      <header class="widget-sitebar">
+        <div class="widget-sitebrand">
+          <img class="widget-site-logo" src="/ansan-logo.png" alt="안산대학교 입학안내">
+          <div class="widget-sitecopy">
+            <span class="widget-site-subtitle">안산대학교</span>
+            <strong class="widget-site-title">입학 도우미</strong>
+          </div>
+        </div>
+      </header>
+
+      <div id="messages" class="messages widget-messages"></div>
+
+      <form id="chat-form" class="composer widget-composer">
+        <textarea id="question" name="question" rows="2" placeholder="채팅을 입력해 주세요" required></textarea>
+        <div class="composer-footer">
+          <button type="submit">질문하기</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <template id="source-template">
+    <li class="source-item">
+      <button type="button" class="source-chip" aria-expanded="false">
+        <span class="source-chip-dot" aria-hidden="true"></span>
+        <span>근거</span>
+      </button>
+      <div class="source-tooltip" role="note">
+        <strong class="source-label"></strong>
+        <p class="source-snippet"></p>
+      </div>
+    </li>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: admissions-chatbot-postgres
+    environment:
+      POSTGRES_DB: admissions_chatbot
+      POSTGRES_USER: admissions
+      POSTGRES_PASSWORD: admissions
+    ports:
+      - "5432:5432"
+    volumes:
+      - admissions-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  admissions-postgres-data:
