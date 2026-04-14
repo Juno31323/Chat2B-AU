@@ -1,0 +1,16 @@
+.git
+.gitattributes
+.gitignore
+.gradle
+.idea
+.vscode
+.data
+build
+out
+bin
+boot.log
+ansan_*.html
+aisw.html
+cls.html
+nursing.html
+tmp_content_*.html
