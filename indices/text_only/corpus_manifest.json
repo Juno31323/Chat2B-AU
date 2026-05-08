@@ -1,0 +1,16 @@
+{
+  "condition": "text_only",
+  "dataset_path": "src/main/resources/admissions-docs/*.md",
+  "included_extensions": [
+    ".md"
+  ],
+  "excluded_extensions": [
+    ".pdf"
+  ],
+  "excluded_data_types": [
+    "image_ocr",
+    "pdf_ocr",
+    "layout_aware_chunks"
+  ],
+  "source_policy": "Only Markdown text notices, FAQ, and text-form admissions guides are included."
+}

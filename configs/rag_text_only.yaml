@@ -1,0 +1,95 @@
+# Text-only RAG baseline configuration.
+# This file is the fixed baseline for paper experiments.
+# Do not add OCR text, PDF OCR output, or layout-aware chunks to this condition.
+
+condition: text_only
+dataset_path: src/main/resources/admissions-docs/*.md
+excluded_patterns:
+  - src/main/resources/admissions-docs/*.pdf
+  - data/ocr_plain/**
+  - data/ocr_layout/**
+  - indices/ocr_plain/**
+  - indices/ocr_layout/**
+
+index_name: text_only
+index_namespace: indices/text_only
+corpus_profile: text_only
+index_version: text_only_v1
+
+embedding_model: hashed-256
+embedding_dim: 256
+
+chunk_size: 700
+chunk_overlap: 0
+tokenizer: unicode-letter-number-v1
+
+retrieval:
+  method: hybrid-rrf
+  bm25_top_k: 50
+  dense_top_k: 50
+  final_top_k: 5
+  fusion_method: rrf
+  rrf_k: 60
+
+refusal_threshold:
+  min_dense_score: 0.22
+  min_token_overlap: 1
+  min_token_coverage: 0.30
+  evidence_top_k: 40
+  out_of_domain_cues:
+    - 날씨
+    - 학번
+    - 삼성전자
+    - 주가
+    - 2030학년도
+    - 존재하지
+    - 개인 연락처
+
+generation:
+  provider: openai
+  model: gpt-5-mini
+  important_model: gpt-5
+  temperature: 0.0
+  max_output_tokens: 512
+  prompt_version: grounded_qa_v1
+  allow_mock_fallback: false
+  input_cost_per_million_tokens_usd: 0.25
+  output_cost_per_million_tokens_usd: 2.00
+  important_input_cost_per_million_tokens_usd: 1.25
+  important_output_cost_per_million_tokens_usd: 10.00
+
+run_env:
+  APP_BOOTSTRAP_LOCATION: classpath:admissions-docs/*.md
+  APP_INDEX_NAME: text_only
+  APP_CORPUS_PROFILE: text_only
+  APP_INDEX_VERSION: text_only_v1
+  APP_EMBEDDING_DIMENSIONS: "256"
+  APP_CHUNK_SIZE: "700"
+  APP_CHUNK_OVERLAP: "0"
+  APP_TOKENIZER: unicode-letter-number-v1
+  APP_FUSION_METHOD: rrf
+  APP_BM25_TOP_K: "50"
+  APP_DENSE_TOP_K: "50"
+  APP_HYBRID_TOP_K: "5"
+  APP_RRF_K: "60"
+  APP_REFUSAL_MIN_DENSE_SCORE: "0.22"
+  APP_REFUSAL_MIN_TOKEN_OVERLAP: "1"
+  APP_REFUSAL_MIN_TOKEN_COVERAGE: "0.30"
+  APP_REFUSAL_EVIDENCE_TOP_K: "40"
+  GENERATION_PROVIDER: openai
+  GENERATION_MODEL: gpt-5-mini
+  GENERATION_IMPORTANT_MODEL: gpt-5
+  GENERATION_TEMPERATURE: "0.0"
+  GENERATION_MAX_OUTPUT_TOKENS: "512"
+  GENERATION_PROMPT_VERSION: grounded_qa_v1
+  GENERATION_ALLOW_MOCK_FALLBACK: "false"
+  GENERATION_INPUT_COST_PER_MILLION_TOKENS_USD: "0.25"
+  GENERATION_OUTPUT_COST_PER_MILLION_TOKENS_USD: "2.00"
+  GENERATION_IMPORTANT_INPUT_COST_PER_MILLION_TOKENS_USD: "1.25"
+  GENERATION_IMPORTANT_OUTPUT_COST_PER_MILLION_TOKENS_USD: "10.00"
+  OPENAI_API_KEY: ""
+
+notes:
+  - Text-only baseline uses only Markdown admissions documents.
+  - Existing PDFs in admissions-docs are intentionally excluded from this condition.
+  - If this config changes, rerun the full text_only experiment results.

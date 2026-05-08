@@ -6,6 +6,7 @@ import com.chat2b.admissions.service.ChatService;
 import com.chat2b.admissions.support.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +24,10 @@ public class ChatController {
 		this.clientIpResolver = clientIpResolver;
 	}
 
-	@PostMapping
+	@PostMapping(
+		consumes = MediaType.APPLICATION_JSON_VALUE,
+		produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8"
+	)
 	public ChatResponse chat(@Valid @RequestBody ChatRequest request, HttpServletRequest servletRequest) {
 		return chatService.answer(request, clientIpResolver.resolve(servletRequest));
 	}

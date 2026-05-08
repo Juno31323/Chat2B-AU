@@ -1,0 +1,5 @@
+{"question_id":"q001","question":"수시 1차 원서접수 기간은 언제야?","category":"admissions_schedule","expected_source_keywords":["수시","원서접수"]}
+{"question_id":"q002","question":"신입생이 받을 수 있는 장학금은 뭐가 있어?","category":"scholarship","expected_source_keywords":["장학금"]}
+{"question_id":"q003","question":"자율전공학과는 몇 년제야?","category":"department","expected_source_keywords":["자율전공학과"]}
+{"question_id":"q004","question":"면접 준비물은 뭐가 필요해?","category":"interview","expected_source_keywords":["면접","준비물"]}
+{"question_id":"q005","question":"이미지 공지에 나온 입학식 일정이 있으면 알려줘","category":"ocr_notice","expected_source_keywords":["입학식","OCR"]}

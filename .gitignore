@@ -40,6 +40,7 @@ out/
 .data/
 .env
 .env.*
+!.env.example
 *.log
 
 ### Local scraped / demo artifacts ###

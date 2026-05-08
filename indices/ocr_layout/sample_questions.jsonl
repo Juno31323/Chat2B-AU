@@ -1,0 +1,5 @@
+{"question": "이미지 공지에서 입학식 날짜와 장소를 알려줘", "target": "date_or_body_block"}
+{"question": "표에 나온 접수 기간을 알려줘", "target": "table_block"}
+{"question": "공지 이미지에 적힌 문의 전화번호를 알려줘", "target": "contact_block"}
+{"question": "OCR confidence가 낮은 부분이 있는지 확인해줘", "target": "low_confidence_chunk"}
+{"question": "이미지 공지 제목과 본문 핵심 내용을 구분해서 알려줘", "target": "title_body_blocks"}

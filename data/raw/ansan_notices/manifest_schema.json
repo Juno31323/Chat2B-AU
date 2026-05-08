@@ -1,0 +1,23 @@
+{
+  "description": "안산대학교 공지 원천 데이터 manifest. Text-only, OCR-RAG, Layout-aware OCR-RAG 전처리 전 단계의 보존용 metadata입니다.",
+  "format": "jsonl",
+  "required_fields": {
+    "notice_id": "수집기가 생성한 안정적인 공지 ID. 예: iphak_19_649",
+    "title": "공지 제목",
+    "url": "공지 상세 페이지 URL",
+    "posted_at": "공지 게시일. 확인 불가 시 null",
+    "collected_at": "수집 시각. UTC ISO-8601",
+    "department": "공지 출처 부서 또는 학과",
+    "category": "게시판 또는 공지 분류",
+    "content_type": "text, image, pdf, mixed 중 하나",
+    "raw_text": "HTML 본문에서 추출한 UTF-8 plain text. OCR 결과는 포함하지 않음",
+    "attachment_urls": "본문/첨부 영역에서 발견한 직접 접근 가능한 이미지/PDF/파일 URL",
+    "local_file_path": "보존한 원본 HTML의 로컬 경로",
+    "source_hash": "원본 HTML bytes SHA-256. 중복 URL/문서 감지 기준"
+  },
+  "additional_fields": {
+    "downloaded_files": "직접 다운로드에 성공한 이미지/PDF/파일 로컬 경로 목록",
+    "is_duplicate": "source_hash가 기존 문서와 같은지 여부",
+    "duplicate_of": "중복이면 원본 notice_id"
+  }
+}

@@ -1,0 +1,16 @@
+# OCR pilot dependencies.
+# Install only what you need for the current pilot run.
+
+# Required for preprocessing profiles: basic, document_scan, poster_safe
+Pillow>=12.2.0
+
+# Optional: 1st OCR candidate for Korean OCR and layout-aware OCR-RAG
+paddleocr>=3.0.0
+
+# Optional: deskew support for document_scan preprocessing
+opencv-python>=4.9.0
+numpy>=1.26.0
+
+# Optional: lightweight fallback OCR baseline
+easyocr>=1.7.0
+

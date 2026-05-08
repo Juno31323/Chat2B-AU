@@ -1,0 +1,89 @@
+{
+  "condition": "ocr_layout",
+  "dataset_path": "data/processed/ocr_layout/corpus/**/*.md",
+  "source_text_docs": "src/main/resources/admissions-docs",
+  "source_ocr_results": "data/processed/ocr_outputs/ocr_results.jsonl",
+  "policy": "Text notices, FAQ, and layout-aware OCR chunks are included. OCR plain-only documents are excluded.",
+  "included_data_types": [
+    "text",
+    "image_ocr_layout_chunk"
+  ],
+  "excluded_data_types": [
+    "image_ocr_plain"
+  ],
+  "layout_chunk_count": 0,
+  "documents": [
+    {
+      "document_id": "안산대학교_2026_FAQ_질문형_정리",
+      "title": "안산대학교 2026 FAQ 질문형 정리",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_2026_FAQ_질문형_정리.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_2026_FAQ_질문형_정리.md",
+      "content_type": "text",
+      "source_hash": "afd432aad418f18534792e34e76f1d7e898eded4fc518345e8d3a1c70bd01511",
+      "chunk_count": 31
+    },
+    {
+      "document_id": "안산대학교_2026_면접_전형료_유의사항",
+      "title": "안산대학교 2026 면접 전형료 유의사항",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_2026_면접_전형료_유의사항.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_2026_면접_전형료_유의사항.md",
+      "content_type": "text",
+      "source_hash": "cb49c579bdfcf34b18e338bcd92e2a14005bfb9fc23ecc24a957e9e2307c956f",
+      "chunk_count": 9
+    },
+    {
+      "document_id": "안산대학교_2026_장학금_기숙사_지원혜택",
+      "title": "안산대학교 2026 장학금 기숙사 지원혜택",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_2026_장학금_기숙사_지원혜택.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_2026_장학금_기숙사_지원혜택.md",
+      "content_type": "text",
+      "source_hash": "70b5a6905a507d118a1a6bd271e0363a1ec6a563cd7a0bc8f4084d884509a48e",
+      "chunk_count": 5
+    },
+    {
+      "document_id": "안산대학교_2026_전형_모집단위",
+      "title": "안산대학교 2026 전형 모집단위",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_2026_전형_모집단위.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_2026_전형_모집단위.md",
+      "content_type": "text",
+      "source_hash": "526bdc1462a569c2a8aa8f1672c80a8847cc28b9017c517ce3d2effef469a400",
+      "chunk_count": 7
+    },
+    {
+      "document_id": "안산대학교_2026_전형일정_등록",
+      "title": "안산대학교 2026 전형일정 등록",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_2026_전형일정_등록.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_2026_전형일정_등록.md",
+      "content_type": "text",
+      "source_hash": "80bfe6f1e78e824e639752163a00a5aa4fb132b8703e889d5fe6dac053a02453",
+      "chunk_count": 7
+    },
+    {
+      "document_id": "안산대학교_2027_입학전형시행계획_요약",
+      "title": "안산대학교 2027 입학전형시행계획 요약",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_2027_입학전형시행계획_요약.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_2027_입학전형시행계획_요약.md",
+      "content_type": "text",
+      "source_hash": "a38cf81388f4693fa0936cd445d97e235b779380edc15b754c8e90a6287ff5a0",
+      "chunk_count": 6
+    },
+    {
+      "document_id": "안산대학교_공식_학교_개요_보강",
+      "title": "안산대학교 공식 학교 개요 보강",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_공식_학교_개요_보강.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_공식_학교_개요_보강.md",
+      "content_type": "text",
+      "source_hash": "b09e7503a6b78039e29c500902ddbfc016d08195f8c71434d4238a35d4f11b04",
+      "chunk_count": 15
+    },
+    {
+      "document_id": "안산대학교_학과전공_학과별_소개_보강",
+      "title": "안산대학교 학과전공 학과별 소개 보강",
+      "source_path": "src/main/resources/admissions-docs/안산대학교_학과전공_학과별_소개_보강.md",
+      "output_path": "data/processed/ocr_layout/corpus/text/안산대학교_학과전공_학과별_소개_보강.md",
+      "content_type": "text",
+      "source_hash": "bcc104ced8f3d0dc095ba8051d244430345ce9163db438c250c39ae661a082d3",
+      "chunk_count": 47
+    }
+  ]
+}

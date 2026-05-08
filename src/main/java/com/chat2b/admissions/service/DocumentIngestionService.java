@@ -1,6 +1,9 @@
 package com.chat2b.admissions.service;
 
+import com.chat2b.admissions.config.AppProperties;
+import com.chat2b.admissions.model.IndexMetadata;
 import com.chat2b.admissions.repository.AdmissionsRepository;
+import com.chat2b.admissions.support.CorpusHashUtils;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -15,6 +18,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class DocumentIngestionService {
@@ -24,44 +29,35 @@ public class DocumentIngestionService {
 	private static final String HASHED_EMBEDDING_MODE = "hashed";
 
 	private final AdmissionsRepository repository;
+	private final AppProperties appProperties;
 	private final TextChunker textChunker;
 	private final GeminiGateway geminiGateway;
 	private final HashedEmbeddingService hashedEmbeddingService;
+	private final Bm25SearchService bm25SearchService;
 	private final ResourcePatternResolver resourcePatternResolver;
 	private volatile String currentEmbeddingMode;
 
 	public DocumentIngestionService(
 		AdmissionsRepository repository,
+		AppProperties appProperties,
 		TextChunker textChunker,
 		GeminiGateway geminiGateway,
 		HashedEmbeddingService hashedEmbeddingService,
+		Bm25SearchService bm25SearchService,
 		ResourcePatternResolver resourcePatternResolver
 	) {
 		this.repository = repository;
+		this.appProperties = appProperties;
 		this.textChunker = textChunker;
 		this.geminiGateway = geminiGateway;
 		this.hashedEmbeddingService = hashedEmbeddingService;
+		this.bm25SearchService = bm25SearchService;
 		this.resourcePatternResolver = resourcePatternResolver;
 		this.currentEmbeddingMode = geminiGateway.isConfigured() ? GEMINI_EMBEDDING_MODE : HASHED_EMBEDDING_MODE;
 	}
 
 	public synchronized IngestionSummary reindex(String locationPattern) {
-		List<Resource> resources = resolveResources(locationPattern);
-		if (resources.isEmpty()) {
-			throw new IllegalStateException("No admissions documents were found for " + locationPattern);
-		}
-
-		List<ParsedDocument> parsedDocuments = new ArrayList<>();
-		for (Resource resource : resources) {
-			ParsedDocument document = parse(resource);
-			if (document.sections().isEmpty()) {
-				continue;
-			}
-			parsedDocuments.add(document);
-		}
-		if (parsedDocuments.isEmpty()) {
-			throw new IllegalStateException("Admissions documents were loaded, but no readable sections were found.");
-		}
+		List<ParsedDocument> parsedDocuments = loadParsedDocuments(locationPattern);
 
 		PreparedIndex preparedIndex = prepareIndex(parsedDocuments);
 		repository.clearKnowledgeBase();
@@ -77,7 +73,10 @@ public class DocumentIngestionService {
 					chunk.content(),
 					chunk.pageNumber(),
 					chunk.sectionName(),
-					chunk.embedding()
+					chunk.embedding(),
+					embeddingModelName(preparedIndex.embeddingMode()),
+					appProperties.getEmbeddingDimensions(),
+					appProperties.getIndexVersion()
 				);
 			}
 			documentCount++;
@@ -85,8 +84,47 @@ public class DocumentIngestionService {
 			log.info("Indexed document {} with {} chunks.", document.title(), document.chunks().size());
 		}
 		currentEmbeddingMode = preparedIndex.embeddingMode();
+		repository.insertIndexMetadata(
+			appProperties.getIndexName(),
+			appProperties.getCorpusProfile(),
+			appProperties.getIndexVersion(),
+			documentCount,
+			chunkCount,
+			embeddingModelName(preparedIndex.embeddingMode()),
+			appProperties.getEmbeddingDimensions(),
+			appProperties.getChunkSize(),
+			appProperties.getChunkOverlap(),
+			appProperties.getTokenizer(),
+			corpusHash(parsedDocuments),
+			retrievalConfigHash(),
+			locationPattern
+		);
+		bm25SearchService.rebuild();
 
 		return new IngestionSummary(documentCount, chunkCount, currentEmbeddingMode);
+	}
+
+	public ReindexDecision evaluateReindex(String locationPattern, boolean forceReindex) {
+		List<ParsedDocument> parsedDocuments = loadParsedDocuments(locationPattern);
+		String embeddingMode = geminiGateway.isConfigured() ? GEMINI_EMBEDDING_MODE : HASHED_EMBEDDING_MODE;
+		ExpectedIndexMetadata expected = expectedMetadata(parsedDocuments, embeddingMode, locationPattern);
+		Optional<IndexMetadata> latest = repository.getLatestIndexMetadata(appProperties.getIndexName(), appProperties.getIndexVersion());
+
+		if (forceReindex) {
+			return ReindexDecision.required("FORCE_REINDEX", expected, latest.orElse(null));
+		}
+		if (latest.isEmpty()) {
+			return ReindexDecision.required("METADATA_MISSING", expected, null);
+		}
+		if (!repository.hasKnowledgeBase()) {
+			return ReindexDecision.required("KNOWLEDGE_BASE_EMPTY", expected, latest.get());
+		}
+
+		String mismatch = mismatchReason(expected, latest.get());
+		if (mismatch != null) {
+			return ReindexDecision.required(mismatch, expected, latest.get());
+		}
+		return ReindexDecision.skip("INDEX_UP_TO_DATE", expected, latest.get());
 	}
 
 	public String embeddingMode() {
@@ -95,6 +133,10 @@ public class DocumentIngestionService {
 
 	public boolean usesGeminiEmbeddings() {
 		return GEMINI_EMBEDDING_MODE.equals(currentEmbeddingMode);
+	}
+
+	public String currentEmbeddingModelName() {
+		return embeddingModelName(currentEmbeddingMode);
 	}
 
 	private PreparedIndex prepareIndex(List<ParsedDocument> parsedDocuments) {
@@ -146,6 +188,111 @@ public class DocumentIngestionService {
 			: hashedEmbeddingService.embed(chunk.content());
 	}
 
+	public String embeddingModelName(String embeddingMode) {
+		return GEMINI_EMBEDDING_MODE.equals(embeddingMode)
+			? geminiGateway.embeddingModelName()
+			: "hashed-" + appProperties.getEmbeddingDimensions();
+	}
+
+	public String retrievalConfigHash() {
+		return CorpusHashUtils.sha256(List.of(
+			"retrievalTopK=" + appProperties.getRetrievalTopK(),
+			"hybridTopK=" + appProperties.getHybridTopK(),
+			"bm25TopK=" + appProperties.getBm25TopK(),
+			"denseTopK=" + appProperties.getDenseTopK(),
+			"rrfK=" + appProperties.getRrfK(),
+			"fusionMethod=" + appProperties.getFusionMethod(),
+			"minSimilarity=" + appProperties.getMinSimilarity(),
+			"responseSourceLimit=" + appProperties.getResponseSourceLimit(),
+			"refusalMinDenseScore=" + appProperties.getRefusalMinDenseScore(),
+			"refusalMinTokenOverlap=" + appProperties.getRefusalMinTokenOverlap(),
+			"refusalMinTokenCoverage=" + appProperties.getRefusalMinTokenCoverage(),
+			"refusalEvidenceTopK=" + appProperties.getRefusalEvidenceTopK(),
+			"refusalOutOfDomainCues=" + String.join(",", appProperties.getRefusalOutOfDomainCues())
+		));
+	}
+
+	private ExpectedIndexMetadata expectedMetadata(List<ParsedDocument> parsedDocuments, String embeddingMode, String locationPattern) {
+		return new ExpectedIndexMetadata(
+			appProperties.getIndexName(),
+			appProperties.getCorpusProfile(),
+			appProperties.getIndexVersion(),
+			parsedDocuments.size(),
+			plannedChunkCount(parsedDocuments),
+			corpusHash(parsedDocuments),
+			embeddingModelName(embeddingMode),
+			appProperties.getEmbeddingDimensions(),
+			appProperties.getChunkSize(),
+			appProperties.getChunkOverlap(),
+			appProperties.getTokenizer(),
+			retrievalConfigHash(),
+			locationPattern
+		);
+	}
+
+	private int plannedChunkCount(List<ParsedDocument> parsedDocuments) {
+		int chunkCount = 0;
+		for (ParsedDocument document : parsedDocuments) {
+			chunkCount += textChunker.chunkSections(document.sections()).size();
+		}
+		return chunkCount;
+	}
+
+	private String mismatchReason(ExpectedIndexMetadata expected, IndexMetadata actual) {
+		if (!Objects.equals(expected.indexName(), actual.indexName())) {
+			return "INDEX_NAME_CHANGED";
+		}
+		if (!Objects.equals(expected.indexVersion(), actual.indexVersion())) {
+			return "INDEX_VERSION_CHANGED";
+		}
+		if (expected.documentCount() != actual.documentCount()) {
+			return "DOCUMENT_COUNT_CHANGED";
+		}
+		if (expected.chunkCount() != actual.chunkCount()) {
+			return "CHUNK_COUNT_CHANGED";
+		}
+		if (!Objects.equals(expected.corpusHash(), actual.corpusHash())) {
+			return "CORPUS_HASH_CHANGED";
+		}
+		if (!Objects.equals(expected.embeddingModel(), actual.embeddingModel())) {
+			return "EMBEDDING_MODEL_CHANGED";
+		}
+		if (expected.embeddingDim() != actual.embeddingDim()) {
+			return "EMBEDDING_DIM_CHANGED";
+		}
+		if (expected.chunkSize() != actual.chunkSize()) {
+			return "CHUNK_SIZE_CHANGED";
+		}
+		if (expected.chunkOverlap() != actual.chunkOverlap()) {
+			return "CHUNK_OVERLAP_CHANGED";
+		}
+		if (!Objects.equals(expected.tokenizer(), actual.tokenizer())) {
+			return "TOKENIZER_CHANGED";
+		}
+		if (!Objects.equals(expected.retrievalConfigHash(), actual.retrievalConfigHash())) {
+			return "RETRIEVAL_CONFIG_CHANGED";
+		}
+		if (!Objects.equals(expected.sourceDataPath(), actual.sourceDataPath())) {
+			return "SOURCE_DATA_PATH_CHANGED";
+		}
+		return null;
+	}
+
+	private String corpusHash(List<ParsedDocument> parsedDocuments) {
+		List<String> parts = new ArrayList<>();
+		for (ParsedDocument document : parsedDocuments) {
+			parts.add(document.title());
+			parts.add(document.sourcePath());
+			parts.add(document.contentType());
+			for (TextChunker.SectionText section : document.sections()) {
+				parts.add(section.sectionName());
+				parts.add(String.valueOf(section.pageNumber()));
+				parts.add(section.text());
+			}
+		}
+		return CorpusHashUtils.sha256(parts);
+	}
+
 	private String summarizeTitle(String documentTitle, String sectionName) {
 		String normalized = String.join(
 			" / ",
@@ -176,6 +323,26 @@ public class DocumentIngestionService {
 		} catch (IOException exception) {
 			throw new IllegalStateException("Unable to load admissions documents.", exception);
 		}
+	}
+
+	private List<ParsedDocument> loadParsedDocuments(String locationPattern) {
+		List<Resource> resources = resolveResources(locationPattern);
+		if (resources.isEmpty()) {
+			throw new IllegalStateException("No admissions documents were found for " + locationPattern);
+		}
+
+		List<ParsedDocument> parsedDocuments = new ArrayList<>();
+		for (Resource resource : resources) {
+			ParsedDocument document = parse(resource);
+			if (document.sections().isEmpty()) {
+				continue;
+			}
+			parsedDocuments.add(document);
+		}
+		if (parsedDocuments.isEmpty()) {
+			throw new IllegalStateException("Admissions documents were loaded, but no readable sections were found.");
+		}
+		return parsedDocuments;
 	}
 
 	private ParsedDocument parse(Resource resource) {
@@ -251,6 +418,38 @@ public class DocumentIngestionService {
 	}
 
 	public record IngestionSummary(int documentCount, int chunkCount, String embeddingMode) {
+	}
+
+	public record ExpectedIndexMetadata(
+		String indexName,
+		String corpusProfile,
+		String indexVersion,
+		int documentCount,
+		int chunkCount,
+		String corpusHash,
+		String embeddingModel,
+		int embeddingDim,
+		int chunkSize,
+		int chunkOverlap,
+		String tokenizer,
+		String retrievalConfigHash,
+		String sourceDataPath
+	) {
+	}
+
+	public record ReindexDecision(
+		boolean required,
+		String reason,
+		ExpectedIndexMetadata expected,
+		IndexMetadata actual
+	) {
+		static ReindexDecision required(String reason, ExpectedIndexMetadata expected, IndexMetadata actual) {
+			return new ReindexDecision(true, reason, expected, actual);
+		}
+
+		static ReindexDecision skip(String reason, ExpectedIndexMetadata expected, IndexMetadata actual) {
+			return new ReindexDecision(false, reason, expected, actual);
+		}
 	}
 
 	private record PreparedIndex(

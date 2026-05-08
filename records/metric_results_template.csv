@@ -1,0 +1,1 @@
+method,subset,recall_at_1,recall_at_3,recall_at_5,mrr,ndcg_at_5,answer_accuracy,faithfulness,answer_relevance,context_precision,avg_latency_ms,note

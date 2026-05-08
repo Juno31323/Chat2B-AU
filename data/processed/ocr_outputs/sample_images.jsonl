@@ -1,0 +1,3 @@
+{"notice_id":"iphak_19_709","file_path":"data/raw/ansan_notices/images/iphak_19_709_a0290fcc89.png","sample_type":"poster_notice","expected_features":["date","event_title","location"],"note":"입학식 및 대학생활 OT 이미지형 공지"}
+{"notice_id":"iphak_19_711","file_path":"data/raw/ansan_notices/images/iphak_19_711_5f02409d1b.png","sample_type":"table_notice","expected_features":["table","fee","time","phone"],"note":"주차 서비스 요금표 및 운영시간 포함 공지"}
+

@@ -4,11 +4,20 @@
     return;
   }
 
+  const ROOT_SELECTOR = ".admissions-widget-root";
+  const STYLE_ID = "admissions-widget-style";
+  const PANEL_ID = "admissions-widget-panel";
+
+  cleanupExistingWidget();
+
   const scriptUrl = new URL(script.src, window.location.href);
   const baseUrl = new URL(".", scriptUrl).href;
   const embedUrl = script.dataset.chatUrl || new URL("embed.html", baseUrl).href;
   const chatIconUrl = new URL("ansan-quick-chat.svg", baseUrl).href;
-  const label = script.dataset.label || "입학상담";
+  const label = script.dataset.label || "\uC785\uD559 \uC0C1\uB2F4";
+  const title = script.dataset.title || "\uC785\uD559 \uB3C4\uC6B0\uBBF8";
+  const schoolLabel = script.dataset.schoolLabel || "\uC548\uC0B0\uB300\uD559\uAD50 \uC785\uD559\uC548\uB0B4";
+  const iframeTitle = script.dataset.iframeTitle || "\uC548\uC0B0\uB300\uD559\uAD50 \uC785\uD559\uC0C1\uB2F4 \uCC57\uBD07";
   const position = (script.dataset.position || "right").toLowerCase() === "left" ? "left" : "right";
   const width = normalizeSize(script.dataset.width, "430px");
   const height = normalizeSize(script.dataset.height, "700px");
@@ -19,20 +28,20 @@
   const root = document.createElement("div");
   root.className = "admissions-widget-root";
   root.innerHTML = `
-    <button type="button" class="admissions-widget-toggle" aria-expanded="false" aria-controls="admissions-widget-panel">
+    <button type="button" class="admissions-widget-toggle" aria-expanded="false" aria-controls="${PANEL_ID}">
       <span class="admissions-widget-toggle-mark">
         <img src="${escapeAttribute(chatIconUrl)}" alt="">
       </span>
       <span class="admissions-widget-toggle-copy">
         <strong>${escapeHtml(label)}</strong>
-        <small>안산대학교 입학안내</small>
+        <small>${escapeHtml(title)}</small>
       </span>
     </button>
-    <section id="admissions-widget-panel" class="admissions-widget-panel" aria-hidden="true">
+    <section id="${PANEL_ID}" class="admissions-widget-panel" aria-hidden="true" data-school-label="${escapeAttribute(schoolLabel)}">
       <iframe
         class="admissions-widget-frame"
         src="${escapeAttribute(embedUrl)}"
-        title="안산대학교 입학상담 챗봇"
+        title="${escapeAttribute(iframeTitle)}"
         loading="lazy"
         referrerpolicy="strict-origin-when-cross-origin"></iframe>
     </section>
@@ -49,20 +58,28 @@
     panel.setAttribute("aria-hidden", String(!isOpen));
   }
 
-  toggle.addEventListener("click", () => {
+  toggle.addEventListener("click", function () {
     setOpen(!root.classList.contains("is-open"));
   });
+
   if (startOpen) {
     setOpen(true);
   }
 
-  function injectStyles(positionValue, widthValue, heightValue) {
-    if (document.getElementById("admissions-widget-style")) {
-      return;
-    }
+  function cleanupExistingWidget() {
+    document.querySelectorAll(ROOT_SELECTOR).forEach(function (node) {
+      node.remove();
+    });
 
+    const style = document.getElementById(STYLE_ID);
+    if (style) {
+      style.remove();
+    }
+  }
+
+  function injectStyles(positionValue, widthValue, heightValue) {
     const style = document.createElement("style");
-    style.id = "admissions-widget-style";
+    style.id = STYLE_ID;
     style.textContent = `
       .admissions-widget-root {
         position: fixed;
@@ -73,20 +90,17 @@
       }
 
       .admissions-widget-toggle {
-        border: 0;
-        cursor: pointer;
-        font: inherit;
-      }
-
-      .admissions-widget-toggle {
         display: inline-flex;
         align-items: center;
         gap: 12px;
         min-width: 188px;
         padding: 11px 15px 11px 11px;
+        border: 0;
         border-radius: 999px;
+        cursor: pointer;
         background: linear-gradient(135deg, #143886, #204faa);
         color: #fff;
+        font: inherit;
         box-shadow: 0 20px 44px rgba(16, 46, 118, 0.28);
       }
 
@@ -184,7 +198,7 @@
     if (!value) {
       return fallback;
     }
-    return /^[0-9]+$/.test(value) ? `${value}px` : value;
+    return /^[0-9]+$/.test(value) ? value + "px" : value;
   }
 
   function escapeHtml(value) {

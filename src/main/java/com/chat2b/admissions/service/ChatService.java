@@ -3,9 +3,12 @@ package com.chat2b.admissions.service;
 import com.chat2b.admissions.config.AppProperties;
 import com.chat2b.admissions.model.ChatRequest;
 import com.chat2b.admissions.model.ChatResponse;
+import com.chat2b.admissions.model.GenerationRequest;
+import com.chat2b.admissions.model.GenerationResult;
 import com.chat2b.admissions.model.RetrievedChunk;
 import com.chat2b.admissions.model.SourceReference;
 import com.chat2b.admissions.repository.AdmissionsRepository;
+import com.chat2b.admissions.service.generation.ChatModelRouter;
 import com.chat2b.admissions.support.TextTokenUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -23,8 +26,9 @@ public class ChatService {
 	private final DocumentIngestionService documentIngestionService;
 	private final GeminiGateway geminiGateway;
 	private final HashedEmbeddingService hashedEmbeddingService;
-	private final DemoAnswerComposer demoAnswerComposer;
+	private final ChatModelRouter chatModelRouter;
 	private final RateLimitService rateLimitService;
+	private final RefusalGuardService refusalGuardService;
 	private final AppProperties appProperties;
 
 	public ChatService(
@@ -32,34 +36,50 @@ public class ChatService {
 		DocumentIngestionService documentIngestionService,
 		GeminiGateway geminiGateway,
 		HashedEmbeddingService hashedEmbeddingService,
-		DemoAnswerComposer demoAnswerComposer,
+		ChatModelRouter chatModelRouter,
 		RateLimitService rateLimitService,
+		RefusalGuardService refusalGuardService,
 		AppProperties appProperties
 	) {
 		this.repository = repository;
 		this.documentIngestionService = documentIngestionService;
 		this.geminiGateway = geminiGateway;
 		this.hashedEmbeddingService = hashedEmbeddingService;
-		this.demoAnswerComposer = demoAnswerComposer;
+		this.chatModelRouter = chatModelRouter;
 		this.rateLimitService = rateLimitService;
+		this.refusalGuardService = refusalGuardService;
 		this.appProperties = appProperties;
 	}
 
 	public ChatResponse answer(ChatRequest request, String ipAddress) {
 		rateLimitService.check(ipAddress, request.sessionId());
 
-		float[] embedding = embed(request.question());
 		Set<String> questionTokens = tokenize(request.question());
-		List<RetrievedChunk> retrieved = repository.searchSimilarChunks(embedding, appProperties.getRetrievalTopK());
-		List<RetrievedChunk> matched = retrieved.stream()
+		List<RetrievedChunk> retrieved = retrieveDense(request.question(), appProperties.getRetrievalTopK());
+		RefusalGuardService.RefusalDecision refusalDecision = refusalGuardService.evaluate(request.question(), retrieved);
+		if (!refusalDecision.allowed()) {
+			repository.logChat(
+				request.question(),
+				refusalDecision.message(),
+				answerMode(),
+				refusalDecision.status(),
+				List.of(),
+				null,
+				ipAddress,
+				request.sessionId()
+			);
+			return new ChatResponse(refusalDecision.message(), answerMode(), refusalDecision.status(), List.of(), null, Instant.now());
+		}
+
+		List<RetrievedChunk> matched = refusalDecision.candidates().stream()
 			.filter(chunk -> chunk.similarity() >= appProperties.getMinSimilarity() || lexicalOverlap(questionTokens, chunk) > 0)
 			.sorted(Comparator.comparingDouble(chunk -> -rankScore(questionTokens, chunk)))
 			.toList();
 
 		if (matched.isEmpty()) {
-			String answer = "제공된 모집요강과 FAQ 기준으로는 질문에 대한 근거를 찾지 못했습니다. 입학처로 직접 문의해 주세요.";
-			repository.logChat(request.question(), answer, answerMode(), "NO_MATCH", List.of(), ipAddress, request.sessionId());
-			return new ChatResponse(answer, answerMode(), "NO_MATCH", List.of(), Instant.now());
+			String answer = "제공된 공지에서 확인되지 않습니다";
+			repository.logChat(request.question(), answer, answerMode(), "NO_MATCH", List.of(), null, ipAddress, request.sessionId());
+			return new ChatResponse(answer, answerMode(), "NO_MATCH", List.of(), null, Instant.now());
 		}
 
 		List<RetrievedChunk> contextChunks = trimContext(matched, appProperties.getMaxContextChars());
@@ -68,19 +88,27 @@ public class ChatService {
 			.map(this::toSource)
 			.toList();
 
-		String answerMode = answerMode();
-		String answer;
-		try {
-			answer = geminiGateway.isConfigured()
-				? geminiGateway.generateAnswer(request.question(), contextChunks)
-				: demoAnswerComposer.compose(request.question(), contextChunks);
-		} catch (RuntimeException exception) {
-			answer = demoAnswerComposer.compose(request.question(), contextChunks);
-			answerMode = "demo-fallback";
-		}
+		GenerationResult generationResult = chatModelRouter.generate(
+			new GenerationRequest(request.question(), contextChunks, Boolean.TRUE.equals(request.important()))
+		);
+		String answerMode = generationResult.metadata() == null
+			? answerMode()
+			: generationResult.metadata().provider();
+		String answer = appendSourceSummary(generationResult.answer(), sources);
 
-		repository.logChat(request.question(), answer, answerMode, "MATCHED", sources, ipAddress, request.sessionId());
-		return new ChatResponse(answer, answerMode, "MATCHED", sources, Instant.now());
+		repository.logChat(request.question(), answer, answerMode, "MATCHED", sources, generationResult.metadata(), ipAddress, request.sessionId());
+		return new ChatResponse(answer, answerMode, "MATCHED", sources, generationResult.metadata(), Instant.now());
+	}
+
+	public List<RetrievedChunk> retrieveDense(String question, int limit) {
+		float[] embedding = embed(question);
+		return repository.searchSimilarChunks(
+			embedding,
+			Math.max(1, limit),
+			documentIngestionService.currentEmbeddingModelName(),
+			appProperties.getEmbeddingDimensions(),
+			appProperties.getIndexVersion()
+		);
 	}
 
 	private float[] embed(String question) {
@@ -90,7 +118,7 @@ public class ChatService {
 	}
 
 	private String answerMode() {
-		return geminiGateway.isConfigured() ? "gemini" : "demo";
+		return chatModelRouter.answerMode();
 	}
 
 	private int responseSourceLimit() {
@@ -123,7 +151,29 @@ public class ChatService {
 		if (snippet.length() > 180) {
 			snippet = snippet.substring(0, 180) + "...";
 		}
-		return new SourceReference(label.toString(), snippet, Math.round(chunk.similarity() * 1000.0d) / 1000.0d);
+		return new SourceReference(
+			label.toString(),
+			snippet,
+			Math.round(chunk.similarity() * 1000.0d) / 1000.0d,
+			chunk.documentTitle(),
+			chunk.url(),
+			chunk.postedAt()
+		);
+	}
+
+	private String appendSourceSummary(String answer, List<SourceReference> sources) {
+		if (sources.isEmpty()) {
+			return answer;
+		}
+		StringBuilder builder = new StringBuilder(answer == null ? "" : answer.trim());
+		builder.append("\n\n근거:");
+		for (SourceReference source : sources) {
+			builder
+				.append("\n- 제목: ").append(source.title())
+				.append("\n  게시일: ").append(source.postedAt() == null ? "게시일 미상" : source.postedAt())
+				.append("\n  URL: ").append(StringUtils.hasText(source.url()) ? source.url() : "URL 없음");
+		}
+		return builder.toString();
 	}
 
 	private double rankScore(Set<String> questionTokens, RetrievedChunk chunk) {

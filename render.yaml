@@ -11,10 +11,36 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /
     envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: experiment
+      - key: OPENAI_API_KEY
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: APP_ADMIN_KEY
         generateValue: true
+      - key: GENERATION_PROVIDER
+        value: openai
+      - key: GENERATION_MODEL
+        value: gpt-5-mini
+      - key: GENERATION_IMPORTANT_MODEL
+        value: gpt-5
+      - key: GENERATION_TEMPERATURE
+        value: "0.0"
+      - key: GENERATION_MAX_OUTPUT_TOKENS
+        value: "512"
+      - key: GENERATION_PROMPT_VERSION
+        value: grounded_qa_v1
+      - key: GENERATION_ALLOW_MOCK_FALLBACK
+        value: "false"
+      - key: GENERATION_INPUT_COST_PER_MILLION_TOKENS_USD
+        value: "0.25"
+      - key: GENERATION_OUTPUT_COST_PER_MILLION_TOKENS_USD
+        value: "2.00"
+      - key: GENERATION_IMPORTANT_INPUT_COST_PER_MILLION_TOKENS_USD
+        value: "1.25"
+      - key: GENERATION_IMPORTANT_OUTPUT_COST_PER_MILLION_TOKENS_USD
+        value: "10.00"
       - key: DATABASE_URL
         fromDatabase:
           name: college-admissions-db
@@ -37,3 +63,11 @@ services:
         value: "true"
       - key: APP_BOOTSTRAP_IF_EMPTY_ONLY
         value: "true"
+      - key: APP_FORCE_REINDEX
+        value: "false"
+      - key: APP_INDEX_NAME
+        value: text_only
+      - key: APP_CORPUS_PROFILE
+        value: text_only
+      - key: APP_INDEX_VERSION
+        value: text_only_v1_experiment

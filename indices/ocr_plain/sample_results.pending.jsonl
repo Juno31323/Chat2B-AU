@@ -1,0 +1,5 @@
+{"question": "입학식 일정은 어디에서 확인할 수 있어?", "reason": "Run OCR batch and Spring ocr_plain reindex before recording final OCR-RAG answers.", "status": "pending_ocr_results"}
+{"question": "주차 서비스 요금은 어떻게 돼?", "reason": "Run OCR batch and Spring ocr_plain reindex before recording final OCR-RAG answers.", "status": "pending_ocr_results"}
+{"question": "이미지 공지에 나온 OT 안내 내용을 알려줘", "reason": "Run OCR batch and Spring ocr_plain reindex before recording final OCR-RAG answers.", "status": "pending_ocr_results"}
+{"question": "선행학습 영향평가 결과 보고서는 어디서 확인해?", "reason": "Run OCR batch and Spring ocr_plain reindex before recording final OCR-RAG answers.", "status": "pending_ocr_results"}
+{"question": "입학전형 종료 안내에 나온 핵심 내용을 알려줘", "reason": "Run OCR batch and Spring ocr_plain reindex before recording final OCR-RAG answers.", "status": "pending_ocr_results"}

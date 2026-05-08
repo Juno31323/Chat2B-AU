@@ -1,0 +1,2 @@
+{"blocks":[{"bbox":[10,20,220,50],"block_type":"title","confidence":0.98,"page":1,"text":"2026학년도 입학식 안내"},{"bbox":[12,68,260,95],"block_type":"text","confidence":0.93,"page":1,"text":"일시: 2026년 2월 27일"}],"engine_version":"example-version","file_path":"data/raw/ansan_notices/images/example.png","metadata":{"pilot_note":"실제 OCR 실행 전 결과 schema 예시"},"notice_id":"example_notice","ocr_engine":"example-engine","plain_text":"2026학년도 입학식 안내\n일시: 2026년 2월 27일","preprocess_profile":"raw"}
+

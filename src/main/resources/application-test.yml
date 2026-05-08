@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:admissions_chatbot_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+
+app:
+  bootstrap-on-startup: false
+  corpus-profile: text_only
+  index-name: text_only
+  index-version: text_only_v1_test
+  pgvector-enabled: false
+  pgvector-index-enabled: false
+
+generation:
+  provider: ${GENERATION_PROVIDER:mock}
+  model: ${GENERATION_MODEL:demo-extractive}
+  temperature: ${GENERATION_TEMPERATURE:0.0}
+  max-output-tokens: ${GENERATION_MAX_OUTPUT_TOKENS:512}
+  prompt-version: ${GENERATION_PROMPT_VERSION:grounded_qa_v1}
+  allow-mock-fallback: true

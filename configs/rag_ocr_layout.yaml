@@ -1,0 +1,129 @@
+# Layout-aware OCR-RAG condition configuration.
+# This condition extends text_only with OCR blocks, bbox, confidence, block_type, dates, contacts, and reading order.
+# Do not use plain OCR documents as-is in this condition.
+
+condition: ocr_layout
+
+dataset_path: data/processed/ocr_layout/corpus/**/*.md
+text_source_path: src/main/resources/admissions-docs/*.md
+ocr_results_path: data/processed/ocr_outputs/ocr_results.jsonl
+layout_chunks_path: indices/ocr_layout/layout_chunks.jsonl
+excluded_patterns:
+  - data/processed/ocr_plain/**
+  - indices/text_only/**
+  - indices/ocr_plain/**
+
+index_name: ocr_layout
+index_namespace: indices/ocr_layout
+corpus_profile: ocr_layout
+index_version: ocr_layout_v1
+
+included_data:
+  - text notices
+  - FAQ
+  - text admissions guides
+  - OCR layout blocks
+  - bbox
+  - reading_order
+  - confidence
+  - extracted_dates
+  - extracted_contacts
+excluded_data:
+  - image OCR plain_text as a single document
+  - OCR layout raw JSON without chunk metadata
+
+layout_chunk_metadata:
+  required:
+    - notice_id
+    - source_image_path
+    - ocr_engine
+    - preprocess_profile
+    - block_type
+    - bbox
+    - page
+    - reading_order
+    - confidence
+    - title
+    - url
+    - posted_at
+    - extracted_dates
+    - extracted_contacts
+  block_types:
+    - title
+    - body
+    - table
+    - date
+    - contact
+    - unknown
+  content_type: image_ocr_layout_chunk
+
+embedding_model: hashed-256
+embedding_dim: 256
+
+chunk_size: 700
+chunk_overlap: 0
+tokenizer: unicode-letter-number-v1
+
+retrieval:
+  method: hybrid-rrf
+  bm25_top_k: 50
+  dense_top_k: 50
+  final_top_k: 5
+  fusion_method: rrf
+  rrf_k: 60
+
+refusal_threshold:
+  min_dense_score: 0.22
+  min_token_overlap: 1
+  min_token_coverage: 0.30
+  evidence_top_k: 40
+
+generation:
+  provider: openai
+  model: gpt-5-mini
+  important_model: gpt-5
+  temperature: 0.0
+  max_output_tokens: 512
+  prompt_version: grounded_qa_v1
+  allow_mock_fallback: false
+  input_cost_per_million_tokens_usd: 0.25
+  output_cost_per_million_tokens_usd: 2.00
+  important_input_cost_per_million_tokens_usd: 1.25
+  important_output_cost_per_million_tokens_usd: 10.00
+
+run_env:
+  APP_BOOTSTRAP_LOCATION: file:data/processed/ocr_layout/corpus/**/*.md
+  APP_INDEX_NAME: ocr_layout
+  APP_CORPUS_PROFILE: ocr_layout
+  APP_INDEX_VERSION: ocr_layout_v1
+  APP_EMBEDDING_DIMENSIONS: "256"
+  APP_CHUNK_SIZE: "700"
+  APP_CHUNK_OVERLAP: "0"
+  APP_TOKENIZER: unicode-letter-number-v1
+  APP_FUSION_METHOD: rrf
+  APP_BM25_TOP_K: "50"
+  APP_DENSE_TOP_K: "50"
+  APP_HYBRID_TOP_K: "5"
+  APP_RRF_K: "60"
+  APP_REFUSAL_MIN_DENSE_SCORE: "0.22"
+  APP_REFUSAL_MIN_TOKEN_OVERLAP: "1"
+  APP_REFUSAL_MIN_TOKEN_COVERAGE: "0.30"
+  APP_REFUSAL_EVIDENCE_TOP_K: "40"
+  GENERATION_PROVIDER: openai
+  GENERATION_MODEL: gpt-5-mini
+  GENERATION_IMPORTANT_MODEL: gpt-5
+  GENERATION_TEMPERATURE: "0.0"
+  GENERATION_MAX_OUTPUT_TOKENS: "512"
+  GENERATION_PROMPT_VERSION: grounded_qa_v1
+  GENERATION_ALLOW_MOCK_FALLBACK: "false"
+  GENERATION_INPUT_COST_PER_MILLION_TOKENS_USD: "0.25"
+  GENERATION_OUTPUT_COST_PER_MILLION_TOKENS_USD: "2.00"
+  GENERATION_IMPORTANT_INPUT_COST_PER_MILLION_TOKENS_USD: "1.25"
+  GENERATION_IMPORTANT_OUTPUT_COST_PER_MILLION_TOKENS_USD: "10.00"
+
+build_commands:
+  - python scripts/build_ocr_layout_corpus.py --ocr-results data/processed/ocr_outputs/ocr_results.jsonl
+
+notes:
+  - Layout-aware OCR-RAG must be rebuilt after OCR blocks, bbox, block_type, confidence, or preprocessing changes.
+  - OCR plain text is not used as one flat document in this condition.

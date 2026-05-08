@@ -1,0 +1,43 @@
+{
+  "started_at": "2026-05-08T02:48:29.150910+00:00",
+  "finished_at": "2026-05-08T02:48:29.457879+00:00",
+  "questions": "experiments/questions.jsonl",
+  "result_jsonl": "experiments/runs/task16_compare_sample/results.jsonl",
+  "result_csv": "experiments/runs/task16_compare_sample/results.csv",
+  "methods": [
+    {
+      "method": "text_only",
+      "config": "configs/rag_text_only.yaml",
+      "dataset_path": "src/main/resources/admissions-docs/*.md",
+      "document_count": 8,
+      "chunk_count": 127,
+      "generation_model": "demo-extractive",
+      "temperature": 0.1,
+      "final_top_k": 5,
+      "method_latency_ms": 61.406
+    },
+    {
+      "method": "ocr_plain",
+      "config": "configs/rag_ocr_plain.yaml",
+      "dataset_path": "data/processed/ocr_plain/corpus/*.md",
+      "document_count": 8,
+      "chunk_count": 127,
+      "generation_model": "demo-extractive",
+      "temperature": 0.1,
+      "final_top_k": 5,
+      "method_latency_ms": 129.112
+    },
+    {
+      "method": "ocr_layout",
+      "config": "configs/rag_ocr_layout.yaml",
+      "dataset_path": "data/processed/ocr_layout/corpus/**/*.md",
+      "document_count": 8,
+      "chunk_count": 127,
+      "generation_model": "demo-extractive",
+      "temperature": 0.1,
+      "final_top_k": 5,
+      "method_latency_ms": 109.919
+    }
+  ],
+  "notes": "Offline comparison runner using hashed dense retrieval, BM25, and RRF with the same config values."
+}

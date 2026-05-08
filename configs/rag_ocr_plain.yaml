@@ -1,0 +1,112 @@
+# OCR-RAG plain-text condition configuration.
+# This condition extends text_only with image notice OCR plain_text only.
+# Do not include OCR layout blocks, table structure, or layout-aware chunks here.
+
+condition: ocr_plain
+
+dataset_path: data/processed/ocr_plain/corpus/*.md
+text_source_path: src/main/resources/admissions-docs/*.md
+ocr_results_path: data/processed/ocr_outputs/ocr_results.jsonl
+excluded_patterns:
+  - data/processed/ocr_layout/**
+  - indices/text_only/**
+  - indices/ocr_layout/**
+
+index_name: ocr_plain
+index_namespace: indices/ocr_plain
+corpus_profile: ocr_plain
+index_version: ocr_plain_v1
+
+included_data:
+  - text notices
+  - FAQ
+  - text admissions guides
+  - image OCR plain_text
+excluded_data:
+  - OCR layout blocks
+  - OCR table structure
+  - layout-aware chunks
+  - PDF OCR unless explicitly converted to image_ocr_plain in a later run
+
+ocr_document_metadata:
+  required:
+    - notice_id
+    - source_image_path
+    - ocr_engine
+    - preprocess_profile
+    - title
+    - url
+    - posted_at
+    - content_type
+  content_type: image_ocr_plain
+
+embedding_model: hashed-256
+embedding_dim: 256
+
+chunk_size: 700
+chunk_overlap: 0
+tokenizer: unicode-letter-number-v1
+
+retrieval:
+  method: hybrid-rrf
+  bm25_top_k: 50
+  dense_top_k: 50
+  final_top_k: 5
+  fusion_method: rrf
+  rrf_k: 60
+
+refusal_threshold:
+  min_dense_score: 0.22
+  min_token_overlap: 1
+  min_token_coverage: 0.30
+  evidence_top_k: 40
+
+generation:
+  provider: openai
+  model: gpt-5-mini
+  important_model: gpt-5
+  temperature: 0.0
+  max_output_tokens: 512
+  prompt_version: grounded_qa_v1
+  allow_mock_fallback: false
+  input_cost_per_million_tokens_usd: 0.25
+  output_cost_per_million_tokens_usd: 2.00
+  important_input_cost_per_million_tokens_usd: 1.25
+  important_output_cost_per_million_tokens_usd: 10.00
+
+run_env:
+  APP_BOOTSTRAP_LOCATION: file:data/processed/ocr_plain/corpus/*.md
+  APP_INDEX_NAME: ocr_plain
+  APP_CORPUS_PROFILE: ocr_plain
+  APP_INDEX_VERSION: ocr_plain_v1
+  APP_EMBEDDING_DIMENSIONS: "256"
+  APP_CHUNK_SIZE: "700"
+  APP_CHUNK_OVERLAP: "0"
+  APP_TOKENIZER: unicode-letter-number-v1
+  APP_FUSION_METHOD: rrf
+  APP_BM25_TOP_K: "50"
+  APP_DENSE_TOP_K: "50"
+  APP_HYBRID_TOP_K: "5"
+  APP_RRF_K: "60"
+  APP_REFUSAL_MIN_DENSE_SCORE: "0.22"
+  APP_REFUSAL_MIN_TOKEN_OVERLAP: "1"
+  APP_REFUSAL_MIN_TOKEN_COVERAGE: "0.30"
+  APP_REFUSAL_EVIDENCE_TOP_K: "40"
+  GENERATION_PROVIDER: openai
+  GENERATION_MODEL: gpt-5-mini
+  GENERATION_IMPORTANT_MODEL: gpt-5
+  GENERATION_TEMPERATURE: "0.0"
+  GENERATION_MAX_OUTPUT_TOKENS: "512"
+  GENERATION_PROMPT_VERSION: grounded_qa_v1
+  GENERATION_ALLOW_MOCK_FALLBACK: "false"
+  GENERATION_INPUT_COST_PER_MILLION_TOKENS_USD: "0.25"
+  GENERATION_OUTPUT_COST_PER_MILLION_TOKENS_USD: "2.00"
+  GENERATION_IMPORTANT_INPUT_COST_PER_MILLION_TOKENS_USD: "1.25"
+  GENERATION_IMPORTANT_OUTPUT_COST_PER_MILLION_TOKENS_USD: "10.00"
+
+build_commands:
+  - python scripts/build_ocr_plain_corpus.py --ocr-results data/processed/ocr_outputs/ocr_results.jsonl
+
+notes:
+  - OCR-RAG must be rebuilt after OCR engine, preprocess_profile, OCR text, or text_only corpus changes.
+  - This condition uses OCR plain_text only. Layout-aware metadata is reserved for rag_ocr_layout.yaml.

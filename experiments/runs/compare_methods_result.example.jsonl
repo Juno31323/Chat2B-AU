@@ -1,0 +1,1 @@
+{"answer":"제공된 공지에서 확인되지 않습니다.","category":"example","generation_model":"demo-extractive","latency_ms":0.0,"method":"text_only","posted_at":[],"question":"예시 질문","question_id":"example_q001","refusal":true,"refusal_reason":"NO_RETRIEVAL_RESULT","retrieval_scores":[],"retrieved_chunks":[],"source_titles":[],"source_urls":[],"temperature":0.1,"top_k":5}

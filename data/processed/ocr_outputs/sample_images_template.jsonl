@@ -1,0 +1,11 @@
+{"notice_id":"sample_poster_01","file_path":"data/raw/ansan_notices/images/example_poster_01.png","sample_type":"poster_notice","expected_features":["title","date"],"note":"일반 포스터형 공지 1"}
+{"notice_id":"sample_poster_02","file_path":"data/raw/ansan_notices/images/example_poster_02.png","sample_type":"poster_notice","expected_features":["title","deadline"],"note":"일반 포스터형 공지 2"}
+{"notice_id":"sample_poster_03","file_path":"data/raw/ansan_notices/images/example_poster_03.png","sample_type":"poster_notice","expected_features":["title","department"],"note":"일반 포스터형 공지 3"}
+{"notice_id":"sample_table_01","file_path":"data/raw/ansan_notices/images/example_table_01.png","sample_type":"table_notice","expected_features":["table","amount","date"],"note":"표 포함 공지 1"}
+{"notice_id":"sample_table_02","file_path":"data/raw/ansan_notices/images/example_table_02.png","sample_type":"table_notice","expected_features":["table","schedule"],"note":"표 포함 공지 2"}
+{"notice_id":"sample_deadline_01","file_path":"data/raw/ansan_notices/images/example_deadline_01.png","sample_type":"deadline_notice","expected_features":["date","deadline"],"note":"날짜/마감일 포함 공지 1"}
+{"notice_id":"sample_deadline_02","file_path":"data/raw/ansan_notices/images/example_deadline_02.png","sample_type":"deadline_notice","expected_features":["date","deadline"],"note":"날짜/마감일 포함 공지 2"}
+{"notice_id":"sample_contact_01","file_path":"data/raw/ansan_notices/images/example_contact_01.png","sample_type":"contact_notice","expected_features":["phone","email"],"note":"전화번호/이메일 포함 공지 1"}
+{"notice_id":"sample_contact_02","file_path":"data/raw/ansan_notices/images/example_contact_02.png","sample_type":"contact_notice","expected_features":["phone","department"],"note":"전화번호/부서 포함 공지 2"}
+{"notice_id":"sample_complex_01","file_path":"data/raw/ansan_notices/images/example_complex_01.png","sample_type":"complex_background","expected_features":["title","body","date"],"note":"저화질 또는 복잡한 배경 공지"}
+

@@ -8,6 +8,7 @@ public record ChatResponse(
 	String answerMode,
 	String retrievalStatus,
 	List<SourceReference> sources,
+	GenerationMetadata generation,
 	Instant generatedAt
 ) {
 }

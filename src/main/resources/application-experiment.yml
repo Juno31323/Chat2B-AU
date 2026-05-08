@@ -1,0 +1,49 @@
+spring:
+  datasource:
+    url: ${SUPABASE_DB_URL:${DATABASE_URL:}}
+    username: ${SUPABASE_DB_USER:${DATABASE_USERNAME:}}
+    password: ${SUPABASE_DB_PASSWORD:${DATABASE_PASSWORD:}}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always
+
+app:
+  bootstrap-location: ${APP_BOOTSTRAP_LOCATION:classpath:admissions-docs/*.md}
+  bootstrap-if-empty-only: ${APP_BOOTSTRAP_IF_EMPTY_ONLY:true}
+  force-reindex: ${APP_FORCE_REINDEX:false}
+  corpus-profile: ${APP_CORPUS_PROFILE:text_only}
+  index-name: ${APP_INDEX_NAME:text_only}
+  index-version: ${APP_INDEX_VERSION:text_only_v1_experiment}
+  embedding-dimensions: ${APP_EMBEDDING_DIMENSIONS:256}
+  chunk-size: ${APP_CHUNK_SIZE:700}
+  chunk-overlap: ${APP_CHUNK_OVERLAP:0}
+  tokenizer: ${APP_TOKENIZER:unicode-letter-number-v1}
+  pgvector-enabled: true
+  pgvector-index-enabled: ${APP_PGVECTOR_INDEX_ENABLED:true}
+  fusion-method: ${APP_FUSION_METHOD:rrf}
+  hybrid-top-k: ${APP_HYBRID_TOP_K:5}
+  bm25-top-k: ${APP_BM25_TOP_K:50}
+  dense-top-k: ${APP_DENSE_TOP_K:50}
+  rrf-k: ${APP_RRF_K:60}
+  refusal-min-dense-score: ${APP_REFUSAL_MIN_DENSE_SCORE:0.22}
+  refusal-min-token-overlap: ${APP_REFUSAL_MIN_TOKEN_OVERLAP:1}
+  refusal-min-token-coverage: ${APP_REFUSAL_MIN_TOKEN_COVERAGE:0.30}
+  refusal-evidence-top-k: ${APP_REFUSAL_EVIDENCE_TOP_K:40}
+
+generation:
+  provider: ${GENERATION_PROVIDER:openai}
+  model: ${GENERATION_MODEL:gpt-5-mini}
+  important-model: ${GENERATION_IMPORTANT_MODEL:gpt-5}
+  temperature: ${GENERATION_TEMPERATURE:0.0}
+  max-output-tokens: ${GENERATION_MAX_OUTPUT_TOKENS:512}
+  prompt-version: ${GENERATION_PROMPT_VERSION:grounded_qa_v1}
+  allow-mock-fallback: ${GENERATION_ALLOW_MOCK_FALLBACK:false}
+  input-cost-per-million-tokens-usd: ${GENERATION_INPUT_COST_PER_MILLION_TOKENS_USD:0.25}
+  output-cost-per-million-tokens-usd: ${GENERATION_OUTPUT_COST_PER_MILLION_TOKENS_USD:2.00}
+  important-input-cost-per-million-tokens-usd: ${GENERATION_IMPORTANT_INPUT_COST_PER_MILLION_TOKENS_USD:1.25}
+  important-output-cost-per-million-tokens-usd: ${GENERATION_IMPORTANT_OUTPUT_COST_PER_MILLION_TOKENS_USD:10.00}
+
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
