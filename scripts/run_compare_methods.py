@@ -32,6 +32,7 @@ class Question:
     question: str
     category: str = ""
     important: bool = False
+    gold_notice_id: str = ""
     expected_source_keywords: list[str] = field(default_factory=list)
 
 
@@ -258,6 +259,7 @@ def read_questions(path: Path) -> list[Question]:
                 question=str(payload["question"]),
                 category=str(payload.get("category", "")),
                 important=bool(payload.get("important", False)),
+                gold_notice_id=str(payload.get("gold_notice_id", "")),
                 expected_source_keywords=list(payload.get("expected_source_keywords", [])),
             )
         )
@@ -528,14 +530,18 @@ def build_result_row(
     source_titles = unique(item.chunk.title for item in ranked)
     source_urls = unique(item.chunk.url or "" for item in ranked if item.chunk.url)
     posted_at = unique(item.chunk.posted_at or "" for item in ranked if item.chunk.posted_at)
+    retrieved_notice_ids = unique(notice_id_for(item.chunk) for item in ranked)
     return {
         "question_id": question.question_id,
         "question": question.question,
         "category": question.category,
         "important": question.important,
+        "gold_notice_id": question.gold_notice_id,
         "method": config.method,
         "answer": answer,
         "retrieved_chunks": retrieved_chunks,
+        "top1_notice_id": retrieved_notice_ids[0] if retrieved_notice_ids else "",
+        "retrieved_notice_ids": retrieved_notice_ids,
         "source_titles": source_titles,
         "source_urls": source_urls,
         "posted_at": posted_at,
@@ -589,6 +595,7 @@ def chunk_to_payload(item: RankedChunk) -> dict[str, Any]:
     return {
         "chunk_id": item.chunk.chunk_id,
         "document_id": item.chunk.document_id,
+        "notice_id": notice_id_for(item.chunk),
         "title": item.chunk.title,
         "url": item.chunk.url,
         "posted_at": item.chunk.posted_at,
@@ -597,6 +604,11 @@ def chunk_to_payload(item: RankedChunk) -> dict[str, Any]:
         "preview": item.chunk.text[:300],
         "layout_metadata": layout_metadata,
     }
+
+
+def notice_id_for(chunk: Chunk) -> str:
+    notice_id = chunk.metadata.get("notice_id") or chunk.metadata.get("gold_notice_id")
+    return str(notice_id or chunk.document_id)
 
 
 def tokenize(value: str) -> list[str]:
@@ -646,8 +658,11 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "question",
         "category",
         "important",
+        "gold_notice_id",
         "method",
         "answer",
+        "top1_notice_id",
+        "retrieved_notice_ids",
         "source_titles",
         "source_urls",
         "posted_at",

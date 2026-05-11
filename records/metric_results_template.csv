@@ -1,1 +1,1 @@
-method,subset,recall_at_1,recall_at_3,recall_at_5,mrr,ndcg_at_5,answer_accuracy,faithfulness,answer_relevance,context_precision,avg_latency_ms,note
+method,subset,recall_at_1,recall_at_3,recall_at_5,mrr,ndcg_at_5,answer_accuracy,faithfulness,answer_relevance,source_accuracy,hallucination_rate,context_precision,date_accuracy,place_accuracy,contact_accuracy,target_accuracy,table_qa_accuracy,refusal_accuracy,avg_latency_ms,note

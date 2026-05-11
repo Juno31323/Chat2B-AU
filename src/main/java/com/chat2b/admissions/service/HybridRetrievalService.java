@@ -82,6 +82,7 @@ public class HybridRetrievalService {
 			results.add(new HybridSearchResult(
 				candidate.chunkId,
 				candidate.documentId,
+				candidate.noticeId,
 				candidate.title,
 				candidate.url,
 				candidate.postedAt,
@@ -124,6 +125,7 @@ public class HybridRetrievalService {
 	private static final class Candidate {
 		private long chunkId;
 		private long documentId;
+		private String noticeId;
 		private String title;
 		private String url;
 		private Instant postedAt;
@@ -137,6 +139,7 @@ public class HybridRetrievalService {
 			Candidate candidate = new Candidate();
 			candidate.chunkId = bm25.chunkId();
 			candidate.documentId = bm25.documentId();
+			candidate.noticeId = bm25.noticeId();
 			candidate.title = bm25.title();
 			candidate.url = bm25.url();
 			candidate.postedAt = bm25.postedAt();
@@ -147,6 +150,7 @@ public class HybridRetrievalService {
 			Candidate candidate = new Candidate();
 			candidate.chunkId = dense.chunkId();
 			candidate.documentId = dense.documentId();
+			candidate.noticeId = dense.noticeId();
 			candidate.title = dense.documentTitle();
 			candidate.url = dense.url();
 			candidate.postedAt = dense.postedAt();
@@ -156,16 +160,19 @@ public class HybridRetrievalService {
 		private void applyBm25(Bm25SearchResult bm25) {
 			bm25Score = bm25.bm25Score();
 			bm25Rank = bm25.bm25Rank();
-			fillMissing(bm25.title(), bm25.url(), bm25.postedAt(), bm25.documentId());
+			fillMissing(bm25.noticeId(), bm25.title(), bm25.url(), bm25.postedAt(), bm25.documentId());
 		}
 
 		private void applyDense(RetrievedChunk dense) {
 			denseScore = dense.denseScore();
 			denseRank = dense.denseRank();
-			fillMissing(dense.documentTitle(), dense.url(), dense.postedAt(), dense.documentId());
+			fillMissing(dense.noticeId(), dense.documentTitle(), dense.url(), dense.postedAt(), dense.documentId());
 		}
 
-		private void fillMissing(String candidateTitle, String candidateUrl, Instant candidatePostedAt, long candidateDocumentId) {
+		private void fillMissing(String candidateNoticeId, String candidateTitle, String candidateUrl, Instant candidatePostedAt, long candidateDocumentId) {
+			if (noticeId == null) {
+				noticeId = candidateNoticeId;
+			}
 			if (title == null) {
 				title = candidateTitle;
 			}

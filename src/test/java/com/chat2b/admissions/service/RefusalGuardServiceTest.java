@@ -83,6 +83,7 @@ class RefusalGuardServiceTest {
 		return new RetrievedChunk(
 			1L,
 			1L,
+			"test_notice_001",
 			title,
 			"https://iphak.ansan.ac.kr/example",
 			Instant.parse("2025-09-01T00:00:00Z"),

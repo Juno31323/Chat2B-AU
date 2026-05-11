@@ -5,6 +5,7 @@ import java.time.Instant;
 public record HybridSearchResult(
 	long chunkId,
 	long documentId,
+	String noticeId,
 	String title,
 	String url,
 	Instant postedAt,

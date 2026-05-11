@@ -14,16 +14,21 @@
 
 | 항목 | 논문 표현 | 실제 구현 | 상태 | 조치 |
 |---|---|---|---|---|
-| Dense retrieval | PostgreSQL + pgvector cosine search | TBD | TBD | TBD |
-| Sparse retrieval | BM25 | TBD | TBD | TBD |
-| Hybrid retrieval | RRF | TBD | TBD | TBD |
-| Text-only RAG | OCR 미포함 | TBD | TBD | TBD |
-| OCR-RAG | OCR plain text 사용 | TBD | TBD | TBD |
-| Layout-aware OCR-RAG | layout block/metadata 사용 | TBD | TBD | TBD |
-| Refusal guard | 근거 부족 시 답변 거절 | TBD | TBD | TBD |
-| Generation model | gpt-5-mini, important gpt-5 | TBD | TBD | TBD |
-| Prompt | grounded_qa_v1 | TBD | TBD | TBD |
-| Token usage 기록 | input/output/total/cost 저장 | TBD | TBD | TBD |
+| Dense retrieval | PostgreSQL + pgvector cosine search | `chunk_embeddings.embedding` 기준 | 부분 완료 | Supabase smoke test 필요 |
+| Sparse retrieval | BM25 | `chunks.content` 기준 BM25 | 구현됨 | 실제 run 기록 필요 |
+| Hybrid retrieval | RRF | BM25 rank + dense rank RRF | 구현됨 | metric 검증 필요 |
+| Text-only RAG | OCR 미포함 | `configs/rag_text_only.yaml` | 부분 완료 | 재인덱싱 run 필요 |
+| OCR-RAG | OCR plain text 사용 | config/구조 준비 | 미완료 | OCR corpus 생성 필요 |
+| Layout-aware OCR-RAG | layout block/metadata 사용 | config/구조 준비 | 미완료 | layout chunk 생성 필요 |
+| Refusal guard | 근거 부족 시 답변 거절 | `RefusalGuardService` | 구현됨 | OOD 평가 필요 |
+| Generation model | gpt-5-mini, important gpt-5 | OpenAI provider 구현 | 구현됨 | 실제 API run 필요 |
+| Prompt | grounded_qa_v1 | `PromptTemplates` | 구현됨 | prompt snapshot 저장 필요 |
+| Token usage 기록 | input/output/total/cost 저장 | `chat_logs` generation columns | 부분 완료 | 실제 API usage 확인 필요 |
+| 공지 단위 검색 평가 | chunk 검색 후 notice_id 기준 평가 | `run_compare_methods.py`, `evaluate_predictions.py` | 구현됨 | gold_notice_id 포함 질문셋 필요 |
+| Source Accuracy | 답변 출처 제목/게시일/URL 일치 평가 | 기록 템플릿/metric column 준비 | 부분 완료 | 평가 라벨링 필요 |
+| Hallucination Rate | 문서 밖 생성 비율 평가 | metric column 준비 | 부분 완료 | judge protocol 필요 |
+| Field Accuracy | 날짜/장소/연락처/대상/표 QA 정확도 | metric column 준비 | 부분 완료 | 필드형 질문셋 필요 |
+| OCR quality 평가 | 대표 이미지 OCR 보존율 평가 | `ocr_quality_template.csv`, `ocr_quality_results` | 부분 완료 | 파일럿 실행 필요 |
 
 ## 불일치 기록 템플릿
 

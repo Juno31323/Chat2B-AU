@@ -5,6 +5,7 @@ import java.time.Instant;
 public record RetrievedChunk(
 	long chunkId,
 	long documentId,
+	String noticeId,
 	String documentTitle,
 	String url,
 	Instant postedAt,

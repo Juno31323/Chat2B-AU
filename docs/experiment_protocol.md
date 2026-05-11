@@ -67,3 +67,6 @@ experiments/runs/YYYYMMDD_method_name/
 - 실험 중 config를 바꾸면 run_id를 새로 만듭니다.
 - Text-only index에 OCR 데이터가 섞이면 해당 run은 폐기합니다.
 - OCR-RAG와 Layout-aware OCR-RAG는 반드시 index_name으로 분리합니다.
+- 검색은 chunk 단위로 수행하되, 논문 retrieval 평가는 `notice_id` 기준으로 중복 제거해 계산합니다.
+- Retrieval metric은 `scripts/evaluate_predictions.py`로 Recall@1/3/5, MRR, nDCG@5를 먼저 계산합니다.
+- Answer Accuracy, Faithfulness, Source Accuracy, Hallucination Rate, 날짜/장소/연락처/대상/표 정확도는 별도 라벨링 또는 LLM-as-judge 절차가 필요하므로 임의 숫자를 채우지 않습니다.

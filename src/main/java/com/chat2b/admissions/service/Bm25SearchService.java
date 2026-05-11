@@ -87,6 +87,7 @@ public class Bm25SearchService {
 			results.add(new Bm25SearchResult(
 				chunk.chunkId(),
 				chunk.documentId(),
+				chunk.noticeId(),
 				chunk.title(),
 				chunk.url(),
 				chunk.postedAt(),

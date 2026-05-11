@@ -1,12 +1,12 @@
 package com.chat2b.admissions.repository;
 
 import com.chat2b.admissions.config.AppProperties;
-import com.chat2b.admissions.model.RetrievedChunk;
 import com.chat2b.admissions.model.Bm25Chunk;
 import com.chat2b.admissions.model.Bm25IndexMetadata;
 import com.chat2b.admissions.model.GenerationMetadata;
 import com.chat2b.admissions.model.HybridSearchResult;
 import com.chat2b.admissions.model.IndexMetadata;
+import com.chat2b.admissions.model.RetrievedChunk;
 import com.chat2b.admissions.model.SourceReference;
 import com.chat2b.admissions.service.DenseVectorSchemaService;
 import com.chat2b.admissions.support.VectorUtils;
@@ -49,7 +49,11 @@ public class AdmissionsRepository {
 		var keyHolder = new GeneratedKeyHolder();
 		jdbcTemplate.update(connection -> {
 			PreparedStatement statement = connection.prepareStatement(
-				"insert into documents (index_name, corpus_profile, index_version, title, source_path, content_type) values (?, ?, ?, ?, ?, ?)",
+				"""
+				insert into documents
+				    (index_name, corpus_profile, index_version, title, source_path, content_type)
+				values (?, ?, ?, ?, ?, ?)
+				""",
 				new String[]{"id"}
 			);
 			statement.setString(1, appProperties.getIndexName());
@@ -78,42 +82,86 @@ public class AdmissionsRepository {
 		int embeddingDim,
 		String indexVersion
 	) {
+		long chunkId = insertChunkRow(documentId, chunkIndex, content, pageNumber, sectionName, indexVersion);
+		insertChunkEmbedding(chunkId, documentId, embedding, embeddingModel, embeddingDim, indexVersion);
+	}
+
+	private long insertChunkRow(
+		long documentId,
+		int chunkIndex,
+		String content,
+		Integer pageNumber,
+		String sectionName,
+		String indexVersion
+	) {
+		var keyHolder = new GeneratedKeyHolder();
+		jdbcTemplate.update(connection -> {
+			PreparedStatement statement = connection.prepareStatement(
+				"""
+				insert into chunks
+				    (document_id, index_name, corpus_profile, index_version, chunk_index, content, page_number, section_name)
+				values (?, ?, ?, ?, ?, ?, ?, ?)
+				""",
+				new String[]{"id"}
+			);
+			statement.setLong(1, documentId);
+			statement.setString(2, appProperties.getIndexName());
+			statement.setString(3, appProperties.getCorpusProfile());
+			statement.setString(4, indexVersion);
+			statement.setInt(5, chunkIndex);
+			statement.setString(6, content);
+			statement.setObject(7, pageNumber);
+			statement.setString(8, sectionName);
+			return statement;
+		}, keyHolder);
+		Number key = keyHolder.getKey();
+		if (key == null) {
+			throw new IllegalStateException("Failed to insert chunk.");
+		}
+		return key.longValue();
+	}
+
+	private void insertChunkEmbedding(
+		long chunkId,
+		long documentId,
+		float[] embedding,
+		String embeddingModel,
+		int embeddingDim,
+		String indexVersion
+	) {
 		String vectorLiteral = VectorUtils.toPgVectorLiteral(embedding);
 		if (denseVectorSchemaService.isPgvectorAvailable()) {
 			jdbcTemplate.update(
 				"""
-				insert into document_chunks
-				    (document_id, chunk_index, content, page_number, section_name, embedding, embedding_model, embedding_dim, index_version, embedding_vector)
-				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::vector)
+				insert into chunk_embeddings
+				    (chunk_id, document_id, index_name, corpus_profile, index_version, embedding_model, embedding_dim, embedding)
+				values (?, ?, ?, ?, ?, ?, ?, ?::vector)
 				""",
+				chunkId,
 				documentId,
-				chunkIndex,
-				content,
-				pageNumber,
-				sectionName,
-				vectorLiteral,
+				appProperties.getIndexName(),
+				appProperties.getCorpusProfile(),
+				indexVersion,
 				embeddingModel,
 				embeddingDim,
-				indexVersion,
 				vectorLiteral
 			);
 			return;
 		}
 		jdbcTemplate.update(
 			"""
-			insert into document_chunks
-			    (document_id, chunk_index, content, page_number, section_name, embedding, embedding_model, embedding_dim, index_version)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			insert into chunk_embeddings
+			    (chunk_id, document_id, index_name, corpus_profile, index_version, embedding_model, embedding_dim, embedding)
+			values (?, ?, ?, ?, ?, ?, ?, ?)
 			""",
+			chunkId,
 			documentId,
-			chunkIndex,
-			content,
-			pageNumber,
-			sectionName,
-			vectorLiteral,
+			appProperties.getIndexName(),
+			appProperties.getCorpusProfile(),
+			indexVersion,
 			embeddingModel,
 			embeddingDim,
-			indexVersion
+			vectorLiteral
 		);
 	}
 
@@ -131,28 +179,33 @@ public class AdmissionsRepository {
 			select
 			    c.id,
 			    c.document_id,
+			    d.notice_id,
 			    d.title,
 			    d.url,
 			    d.posted_at,
 			    c.content,
 			    c.page_number,
 			    c.section_name,
-			    1 - (c.embedding_vector <=> ?::vector) as dense_score,
-			    row_number() over (order by c.embedding_vector <=> ?::vector) as dense_rank
-			from document_chunks c
+			    1 - (e.embedding <=> ?::vector) as dense_score,
+			    row_number() over (order by e.embedding <=> ?::vector) as dense_rank
+			from chunks c
 			join documents d on d.id = c.document_id
-			where c.embedding_vector is not null
-			  and c.embedding_model = ?
-			  and c.embedding_dim = ?
+			join chunk_embeddings e on e.chunk_id = c.id
+			where e.embedding_model = ?
+			  and e.embedding_dim = ?
+			  and e.index_name = ?
+			  and e.index_version = ?
+			  and c.index_name = ?
 			  and c.index_version = ?
 			  and d.index_name = ?
 			  and d.index_version = ?
-			order by c.embedding_vector <=> ?::vector
+			order by e.embedding <=> ?::vector
 			limit ?
 			""",
 			(rs, rowNum) -> new RetrievedChunk(
 				rs.getLong("id"),
 				rs.getLong("document_id"),
+				rs.getString("notice_id"),
 				rs.getString("title"),
 				rs.getString("url"),
 				toInstant(rs.getTimestamp("posted_at")),
@@ -166,6 +219,9 @@ public class AdmissionsRepository {
 			vectorLiteral,
 			embeddingModel,
 			embeddingDim,
+			appProperties.getIndexName(),
+			indexVersion,
+			appProperties.getIndexName(),
 			indexVersion,
 			appProperties.getIndexName(),
 			indexVersion,
@@ -180,17 +236,22 @@ public class AdmissionsRepository {
 			select
 			    c.id,
 			    c.document_id,
+			    d.notice_id,
 			    d.title,
 			    d.url,
 			    d.posted_at,
 			    c.content,
 			    c.page_number,
 			    c.section_name,
-			    c.embedding
-			from document_chunks c
+			    e.embedding
+			from chunks c
 			join documents d on d.id = c.document_id
-			where c.embedding_model = ?
-			  and c.embedding_dim = ?
+			join chunk_embeddings e on e.chunk_id = c.id
+			where e.embedding_model = ?
+			  and e.embedding_dim = ?
+			  and e.index_name = ?
+			  and e.index_version = ?
+			  and c.index_name = ?
 			  and c.index_version = ?
 			  and d.index_name = ?
 			  and d.index_version = ?
@@ -198,6 +259,7 @@ public class AdmissionsRepository {
 			(rs, rowNum) -> new RetrievedChunk(
 				rs.getLong("id"),
 				rs.getLong("document_id"),
+				rs.getString("notice_id"),
 				rs.getString("title"),
 				rs.getString("url"),
 				toInstant(rs.getTimestamp("posted_at")),
@@ -209,6 +271,9 @@ public class AdmissionsRepository {
 			),
 			embeddingModel,
 			embeddingDim,
+			appProperties.getIndexName(),
+			indexVersion,
+			appProperties.getIndexName(),
 			indexVersion,
 			appProperties.getIndexName(),
 			indexVersion
@@ -222,6 +287,7 @@ public class AdmissionsRepository {
 			ranked.set(index, new RetrievedChunk(
 				chunk.chunkId(),
 				chunk.documentId(),
+				chunk.noticeId(),
 				chunk.documentTitle(),
 				chunk.url(),
 				chunk.postedAt(),
@@ -293,8 +359,8 @@ public class AdmissionsRepository {
 			"""
 			insert into index_metadata
 			    (index_name, corpus_profile, index_version, document_count, chunk_count, embedding_model, embedding_dim,
-			     chunk_size, chunk_overlap, tokenizer, corpus_hash, retrieval_config_hash, source_data_path)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			     chunk_size, chunk_overlap, tokenizer, retrieval_method, corpus_hash, retrieval_config_hash, source_data_path)
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			""",
 			indexName,
 			corpusProfile,
@@ -306,6 +372,7 @@ public class AdmissionsRepository {
 			chunkSize,
 			chunkOverlap,
 			tokenizer,
+			"hybrid-" + appProperties.getFusionMethod(),
 			corpusHash,
 			retrievalConfigHash,
 			sourceDataPath
@@ -315,7 +382,8 @@ public class AdmissionsRepository {
 	public Map<String, Object> getStatusSummary() {
 		Map<String, Object> summary = new LinkedHashMap<>();
 		summary.put("documents", jdbcTemplate.queryForObject("select count(*) from documents", Long.class));
-		summary.put("chunks", jdbcTemplate.queryForObject("select count(*) from document_chunks", Long.class));
+		summary.put("chunks", jdbcTemplate.queryForObject("select count(*) from chunks", Long.class));
+		summary.put("chunkEmbeddings", jdbcTemplate.queryForObject("select count(*) from chunk_embeddings", Long.class));
 		summary.put("chatLogs", jdbcTemplate.queryForObject("select count(*) from chat_logs", Long.class));
 		return summary;
 	}
@@ -386,13 +454,15 @@ public class AdmissionsRepository {
 			select
 			    c.id,
 			    c.document_id,
+			    d.notice_id,
 			    d.title,
 			    d.url,
 			    d.posted_at,
 			    c.content
-			from document_chunks c
+			from chunks c
 			join documents d on d.id = c.document_id
-			where c.index_version = ?
+			where c.index_name = ?
+			  and c.index_version = ?
 			  and d.index_name = ?
 			  and d.index_version = ?
 			order by c.id
@@ -400,11 +470,13 @@ public class AdmissionsRepository {
 			(rs, rowNum) -> new Bm25Chunk(
 				rs.getLong("id"),
 				rs.getLong("document_id"),
+				rs.getString("notice_id"),
 				rs.getString("title"),
 				rs.getString("url"),
 				toInstant(rs.getTimestamp("posted_at")),
 				rs.getString("content")
 			),
+			appProperties.getIndexName(),
 			indexVersion,
 			appProperties.getIndexName(),
 			indexVersion
@@ -422,9 +494,10 @@ public class AdmissionsRepository {
 		jdbcTemplate.update(
 			"""
 			insert into bm25_index_metadata
-			    (corpus_profile, index_version, tokenizer, document_count, chunk_count, corpus_hash)
-			values (?, ?, ?, ?, ?, ?)
+			    (index_name, corpus_profile, index_version, tokenizer, document_count, chunk_count, corpus_hash)
+			values (?, ?, ?, ?, ?, ?, ?)
 			""",
+			appProperties.getIndexName(),
 			corpusProfile,
 			indexVersion,
 			tokenizer,
@@ -444,16 +517,20 @@ public class AdmissionsRepository {
 			jdbcTemplate.update(
 				"""
 				insert into retrieval_logs
-				    (question, retrieval_method, index_version, fusion_method, chunk_id, document_id, title, url, posted_at,
-				     bm25_score, dense_score, hybrid_score, bm25_rank, dense_rank, hybrid_rank)
-				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				    (question, retrieval_method, index_name, corpus_profile, index_version, fusion_method,
+				     chunk_id, document_id, notice_id, title, url, posted_at, bm25_score, dense_score, hybrid_score,
+				     bm25_rank, dense_rank, hybrid_rank)
+				values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				""",
 				question,
 				result.retrievalMethod(),
+				appProperties.getIndexName(),
+				appProperties.getCorpusProfile(),
 				indexVersion,
 				fusionMethod,
 				result.chunkId(),
 				result.documentId(),
+				result.noticeId(),
 				result.title(),
 				result.url(),
 				result.postedAt() == null ? null : Timestamp.from(result.postedAt()),
@@ -480,6 +557,8 @@ public class AdmissionsRepository {
 			    corpus_hash,
 			    created_at
 			from bm25_index_metadata
+			where index_name = ?
+			  and index_version = ?
 			order by id desc
 			limit 1
 			""",
@@ -492,7 +571,9 @@ public class AdmissionsRepository {
 				rs.getInt("chunk_count"),
 				rs.getString("corpus_hash"),
 				toInstant(rs.getTimestamp("created_at"))
-			)
+			),
+			appProperties.getIndexName(),
+			appProperties.getIndexVersion()
 		);
 		return metadata.stream().findFirst();
 	}
@@ -505,20 +586,19 @@ public class AdmissionsRepository {
 			appProperties.getIndexVersion()
 		);
 		Long chunkCount = jdbcTemplate.queryForObject(
-			"""
-			select count(*)
-			from document_chunks c
-			join documents d on d.id = c.document_id
-			where d.index_name = ?
-			  and d.index_version = ?
-			  and c.index_version = ?
-			""",
+			"select count(*) from chunks where index_name = ? and index_version = ?",
 			Long.class,
 			appProperties.getIndexName(),
-			appProperties.getIndexVersion(),
 			appProperties.getIndexVersion()
 		);
-		return documentCount != null && chunkCount != null && documentCount > 0 && chunkCount > 0;
+		Long embeddingCount = jdbcTemplate.queryForObject(
+			"select count(*) from chunk_embeddings where index_name = ? and index_version = ?",
+			Long.class,
+			appProperties.getIndexName(),
+			appProperties.getIndexVersion()
+		);
+		return documentCount != null && chunkCount != null && embeddingCount != null
+			&& documentCount > 0 && chunkCount > 0 && embeddingCount > 0;
 	}
 
 	private Instant toInstant(Timestamp timestamp) {

@@ -1,1 +1,1 @@
-run_id,question_id,method,answer,refused,top1_notice_id,top1_title,retrieved_notice_ids,source_urls,latency_ms,input_tokens,output_tokens,memo
+run_id,question_id,method,answer,refused,top1_notice_id,top1_title,retrieved_notice_ids,source_urls,latency_ms,input_tokens,output_tokens,total_tokens,estimated_cost_usd,generation_model,prompt_version,memo

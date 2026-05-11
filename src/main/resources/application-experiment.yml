@@ -6,7 +6,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   sql:
     init:
-      mode: always
+      mode: never
 
 app:
   bootstrap-location: ${APP_BOOTSTRAP_LOCATION:classpath:admissions-docs/*.md}

@@ -1,29 +1,48 @@
--- Draft PostgreSQL/Supabase migration for paper experiments.
--- Apply manually or wire through Flyway before running experiment/production profiles.
+-- PostgreSQL/Supabase schema for paper experiments.
+-- This is the canonical experiment schema.
+-- Apply this before running the `experiment` profile.
 
 create extension if not exists vector;
 
 create table if not exists documents (
     id bigserial primary key,
+    index_name varchar(120) not null,
     corpus_profile varchar(50) not null,
     index_version varchar(100) not null,
+    notice_id varchar(160),
     title varchar(255) not null,
     source_path varchar(512) not null,
     url varchar(1024),
     posted_at timestamp,
+    collected_at timestamp,
+    department varchar(160),
+    category varchar(120),
     content_type varchar(50) not null,
+    attachment_urls text,
+    local_file_path varchar(1024),
+    source_hash varchar(64),
     created_at timestamp not null default current_timestamp
 );
 
 create table if not exists chunks (
     id bigserial primary key,
     document_id bigint not null references documents(id) on delete cascade,
+    index_name varchar(120) not null,
     corpus_profile varchar(50) not null,
     index_version varchar(100) not null,
     chunk_index integer not null,
     content text not null,
     page_number integer,
     section_name varchar(255),
+    source_image_path varchar(1024),
+    ocr_engine varchar(120),
+    preprocess_profile varchar(80),
+    block_type varchar(50),
+    bbox jsonb,
+    reading_order integer,
+    confidence double precision,
+    extracted_dates jsonb,
+    extracted_contacts jsonb,
     created_at timestamp not null default current_timestamp
 );
 
@@ -31,6 +50,7 @@ create table if not exists chunk_embeddings (
     id bigserial primary key,
     chunk_id bigint not null references chunks(id) on delete cascade,
     document_id bigint not null references documents(id) on delete cascade,
+    index_name varchar(120) not null,
     corpus_profile varchar(50) not null,
     index_version varchar(100) not null,
     embedding_model varchar(120) not null,
@@ -40,17 +60,45 @@ create table if not exists chunk_embeddings (
     unique (chunk_id, embedding_model, embedding_dim, index_version)
 );
 
-create index if not exists idx_documents_profile_version
-    on documents (corpus_profile, index_version);
+create index if not exists idx_documents_experiment_index
+    on documents (index_name, corpus_profile, index_version);
 
-create index if not exists idx_chunks_profile_version
-    on chunks (corpus_profile, index_version);
+create index if not exists idx_documents_notice_id
+    on documents (notice_id);
 
-create index if not exists idx_chunk_embeddings_profile_version
-    on chunk_embeddings (corpus_profile, index_version, embedding_model, embedding_dim);
+create index if not exists idx_documents_source_hash
+    on documents (source_hash);
+
+create index if not exists idx_chunks_experiment_index
+    on chunks (index_name, corpus_profile, index_version);
+
+create index if not exists idx_chunk_embeddings_experiment_index
+    on chunk_embeddings (index_name, corpus_profile, index_version, embedding_model, embedding_dim);
 
 create index if not exists idx_chunk_embeddings_embedding_cosine
     on chunk_embeddings using hnsw (embedding vector_cosine_ops);
+
+create table if not exists chat_logs (
+    id bigserial primary key,
+    question text not null,
+    answer text not null,
+    answer_mode varchar(50) not null,
+    retrieval_status varchar(50) not null,
+    source_labels text,
+    generation_provider varchar(50),
+    generation_model varchar(120),
+    generation_model_version varchar(160),
+    generation_temperature double precision,
+    generation_max_output_tokens integer,
+    prompt_version varchar(120),
+    input_tokens integer,
+    output_tokens integer,
+    total_tokens integer,
+    estimated_cost_usd double precision,
+    ip_address varchar(100),
+    session_id varchar(100),
+    created_at timestamp not null default current_timestamp
+);
 
 create table if not exists index_metadata (
     id bigserial primary key,
@@ -74,11 +122,14 @@ create table if not exists index_metadata (
 create table if not exists retrieval_logs (
     id bigserial primary key,
     run_id varchar(120),
+    question_id varchar(120),
+    index_name varchar(120) not null,
     corpus_profile varchar(50) not null,
     index_version varchar(100) not null,
     question text not null,
     chunk_id bigint,
     document_id bigint,
+    notice_id varchar(160),
     title varchar(255),
     url varchar(1024),
     posted_at timestamp,
@@ -89,12 +140,122 @@ create table if not exists retrieval_logs (
     dense_rank integer,
     hybrid_rank integer,
     fusion_method varchar(80),
-    retrieval_mode varchar(80) not null,
+    retrieval_method varchar(80) not null,
+    generation_provider varchar(50),
+    generation_model varchar(120),
+    prompt_version varchar(120),
+    created_at timestamp not null default current_timestamp
+);
+
+create table if not exists experiment_runs (
+    run_id varchar(120) primary key,
+    method varchar(80) not null,
+    config_file varchar(512) not null,
+    index_name varchar(120) not null,
+    index_version varchar(100) not null,
+    question_set varchar(512) not null,
+    generation_provider varchar(50),
+    generation_model varchar(120),
+    prompt_version varchar(120),
+    started_at timestamp not null default current_timestamp,
+    finished_at timestamp,
+    notes text
+);
+
+create table if not exists evaluation_questions (
+    question_id varchar(120) primary key,
+    question text not null,
+    question_type varchar(80),
+    source_type varchar(80),
+    gold_notice_id varchar(160),
+    gold_title varchar(255),
+    gold_answer text,
+    allowed_answer text,
+    required_field varchar(80),
+    difficulty varchar(40),
+    memo text
+);
+
+create table if not exists prediction_results (
+    id bigserial primary key,
+    run_id varchar(120),
+    question_id varchar(120),
+    method varchar(80) not null,
+    answer text,
+    refused boolean not null default false,
+    top1_notice_id varchar(160),
+    top1_title varchar(255),
+    retrieved_notice_ids text,
+    source_urls text,
+    latency_ms double precision,
+    input_tokens integer,
+    output_tokens integer,
+    total_tokens integer,
+    estimated_cost_usd double precision,
+    created_at timestamp not null default current_timestamp
+);
+
+create table if not exists metric_results (
+    id bigserial primary key,
+    run_id varchar(120),
+    method varchar(80) not null,
+    subset varchar(80) not null,
+    recall_at_1 double precision,
+    recall_at_3 double precision,
+    recall_at_5 double precision,
+    mrr double precision,
+    ndcg_at_5 double precision,
+    answer_accuracy double precision,
+    faithfulness double precision,
+    answer_relevance double precision,
+    source_accuracy double precision,
+    hallucination_rate double precision,
+    context_precision double precision,
+    date_accuracy double precision,
+    place_accuracy double precision,
+    contact_accuracy double precision,
+    target_accuracy double precision,
+    table_qa_accuracy double precision,
+    refusal_accuracy double precision,
+    avg_latency_ms double precision,
+    note text,
+    created_at timestamp not null default current_timestamp
+);
+
+create table if not exists error_analysis_results (
+    id bigserial primary key,
+    run_id varchar(120),
+    question_id varchar(120),
+    method varchar(80) not null,
+    error_type varchar(120) not null,
+    error_detail text,
+    suspected_cause text,
+    fix_idea text,
+    memo text,
+    created_at timestamp not null default current_timestamp
+);
+
+create table if not exists ocr_quality_results (
+    id bigserial primary key,
+    sample_id varchar(120) not null,
+    notice_id varchar(160),
+    image_path varchar(1024) not null,
+    ocr_engine varchar(120) not null,
+    preprocess_profile varchar(80) not null,
+    title_correct boolean,
+    date_correct boolean,
+    contact_correct boolean,
+    place_correct boolean,
+    table_preserved boolean,
+    reading_order_correct boolean,
+    avg_confidence double precision,
+    error_note text,
     created_at timestamp not null default current_timestamp
 );
 
 create table if not exists bm25_index_metadata (
     id bigserial primary key,
+    index_name varchar(120) not null,
     corpus_profile varchar(50) not null,
     index_version varchar(100) not null,
     tokenizer varchar(120) not null,
@@ -103,3 +264,15 @@ create table if not exists bm25_index_metadata (
     corpus_hash varchar(64) not null,
     created_at timestamp not null default current_timestamp
 );
+
+create index if not exists idx_index_metadata_name_version
+    on index_metadata (index_name, index_version, created_at desc);
+
+create index if not exists idx_retrieval_logs_name_version
+    on retrieval_logs (index_name, index_version, retrieval_method, created_at desc);
+
+create index if not exists idx_retrieval_logs_notice_id
+    on retrieval_logs (notice_id);
+
+create index if not exists idx_chat_logs_generation_model
+    on chat_logs (generation_provider, generation_model, prompt_version, created_at desc);

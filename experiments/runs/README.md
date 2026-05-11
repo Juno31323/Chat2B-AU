@@ -36,7 +36,17 @@ experiments/runs/YYYYMMDD_method_name/
 ## 저장 원칙
 
 - 같은 질문 세트로 Text-only, OCR-RAG, Layout-aware OCR-RAG를 실행합니다.
+- 검색 결과 평가는 chunk가 아니라 `notice_id` 기준으로 중복 제거해 계산합니다.
 - 실행 당시 config를 반드시 복사해 `config_snapshot.yaml`로 저장합니다.
 - index metadata를 반드시 저장합니다.
 - OpenAI key, Gemini key, DB password 같은 secret은 절대 저장하지 않습니다.
 - 사람이 보기 좋은 분석표는 Google Sheets로 옮겨도 되지만, 원본 결과는 이 디렉터리에 남깁니다.
+
+## 기본 실행
+
+```powershell
+python scripts\run_compare_methods.py --questions experiments\questions.jsonl
+python scripts\evaluate_predictions.py --predictions experiments\runs\YYYYMMDD_HHMMSS_compare_methods\results.jsonl
+```
+
+`evaluate_predictions.py`는 Recall@1/3/5, MRR, nDCG@5를 계산합니다. Answer Accuracy, Faithfulness, Source Accuracy, Hallucination Rate, 날짜/장소/연락처/대상/표 정확도는 별도 라벨링 후 채웁니다.
